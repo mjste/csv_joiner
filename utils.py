@@ -171,7 +171,6 @@ def merge(fname1, fname2, fin1, fin2, fout, column_index1, column_index2, join_m
     while True:
         cmp = line_cmp(line1, line2, column_index1, column_index2)
         if cmp < 0:
-            # fout.write('-1\n')
             if prevstate == 'found':
                 line1 = f1.readline()
                 f2.seek(prevpos2)
@@ -181,8 +180,6 @@ def merge(fname1, fname2, fin1, fin2, fout, column_index1, column_index2, join_m
 
                 continue
             prevstate = 'not_found'
-            # fout.write("ppos: "+str(prevpos2)+'->')
-            # fout.write(str(prevpos2)+'\n')
 
             # print(1, line1, end='')
             if join_mode == 'left':
@@ -203,7 +200,6 @@ def merge(fname1, fname2, fin1, fin2, fout, column_index1, column_index2, join_m
                         # print(line)
                 break
         else:
-            # fout.write('0\n')
             prevline1 = line1
             prevstate = 'found'
             fout.write(line1[:-1])
@@ -212,8 +208,6 @@ def merge(fname1, fname2, fin1, fin2, fout, column_index1, column_index2, join_m
             line2 = f2.readline()
             if line2 == '':
                 if join_mode == 'left':
-                    # print(line1)
-                    # fout.write(line1)
                     for line in f1:
                         fout.write(line)
                 break
