@@ -37,16 +37,97 @@ def eprint(*args, **kwargs):
 
 def sort_file_by_column(fname, column_name):
     fin = open(fname, 'r')
-    ftmp1 = open("tmp1", "w")
-    ftmp2 = open("tmp2", "w")
 
     csvreader = csv.reader(fin)
-    prev_row = next(csvreader)
-    print("header: ", prev_row)
-    for row in csvreader:
+    header = next(csvreader)
+    column_index = header.index(column_name)
 
-        pass
+    sorted = sfbc(csvreader, column_index)
+    merge_semisorted_files("out", column_index)
+
+    i = 0
+    while not sorted:
+        print(i)
+        with open("out", 'r') as file:
+            csvr = csv.reader(file)
+            sorted = sfbc(csvr, column_index)
+        merge_semisorted_files("out", column_index)
+
+# sort file by column without header
 
 
-def merge_sorted_files(fname1, fname2, column_name, join_mode):
-    pass
+def sfbc(csvr: csv.reader, index: int):
+    f1 = open("tmp1", 'w')
+    f2 = open("tmp2", 'w')
+    prev_row = next(csvr)
+    f1.write(list_to_csvstr(prev_row))
+
+    sorted = True
+    for row in csvr:
+        if row[index] < prev_row[index]:
+            sorted = False
+            f1, f2, = f2, f1
+        f1.write(list_to_csvstr(row))
+        prev_row = row
+    f1.close()
+    f2.close()
+    return sorted
+
+
+def list_to_csvstr(row):
+    nrow = []
+    for i in range(len(row)):
+        nrow.append('"'+row[i]+'"')
+    return ','.join(nrow)+'\n'
+
+
+def merge_semisorted_files(fname, index):
+    f1 = open("tmp1", 'r')
+    f2 = open("tmp2", 'r')
+    fout = open(fname, 'w')
+    csvr1 = csv.reader(f1)
+    csvr2 = csv.reader(f2)
+
+    try:
+        row1 = next(csvr1)
+    except StopIteration:
+        for row in csvr2:
+            fout.write(list_to_csvstr(row))
+        f1.close()
+        f2.close()
+        return
+
+    try:
+        row2 = next(csvr2)
+    except StopIteration:
+        fout.write(list_to_csvstr(row1))
+        for row in csvr1:
+            fout.write(list_to_csvstr(row))
+        f1.close()
+        f2.close()
+        return
+
+    while True:
+        print(row1[index], row2[index])
+        if row1[index] < row2[index]:
+            fout.write(list_to_csvstr(row1))
+            try:
+                row1 = next(csvr1)
+            except StopIteration:
+                fout.write(list_to_csvstr(row2))
+                for row in csvr2:
+                    fout.write(list_to_csvstr(row))
+                f1.close()
+                f2.close()
+                return
+        else:
+            fout.write(list_to_csvstr(row2))
+            try:
+                row2 = next(csvr2)
+            except StopIteration:
+                fout.write(list_to_csvstr(row1))
+                for row in csvr1:
+                    fout.write(list_to_csvstr(row))
+                f1.close()
+                f2.close()
+                return
