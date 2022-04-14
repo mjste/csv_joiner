@@ -7,3 +7,9 @@ It is assumed that input files may be very large, therefore too large for RAM to
 Then sorted files, are again treated as streams, and join operation is performed.
 
 Current version does not support printing to standard output, only to out file. It was done due to easier debugging in that form. And lack of time.
+
+You run it by typing:
+
+$python3 prog.py filename1 filename2 column_name [mode]
+
+Default mode is inner join
