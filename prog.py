@@ -4,7 +4,7 @@ from utils import *
 
 # print(sys.argv)
 if (len(sys.argv) not in [4, 5]):
-    eprint("Incorrect argument number")
+    eprint("Incorrect argument number, correct: 3, 4")
     exit(0)
 
 
@@ -49,35 +49,18 @@ with open(fname2, 'r') as file:
     if column_name in header:
         col2_exists = True
 
-# col1_exists = check_if_column_exist(fname1, column_name)
-# col2_exists = check_if_column_exist(fname2, column_name)
+# Validity check done
 
-# if col1_exists:
-#     if col2_exists:
-#         # obie istnieją
-#         sort_file_by_column(fname1, column_name)
-#         print()
-#         sort_file_by_column(fname2, column_name)
-#         merge_sorted_files(fname1, fname2, column_name, join_mode)
-#     else:
-#         pass
-# else:
-#     pass
-    # obie nie istnieją
+if col1_exists:
+    if col2_exists:
+        fout1 = "out1"
+        fout2 = "out2"
+        column_index1 = sort_file_by_column(fname1, fout1, column_name)
+        column_index2 = sort_file_by_column(fname2, fout2, column_name)
 
-    # Validity check done
-
-    # posortuj plik 1
-    # posortuj plik 2
-
-
-# with open(fname1, 'r') as file:
-#     csvreader = csv.reader(file)
-#     csviter = iter(csvreader)
-#     while True:
-#         try:
-#             print(next(csviter))
-#         except:
-#             break
-
-sort_file_by_column(fname1, column_name)
+        merge(fname1, fname2, fout1, fout2,
+              "out", column_index1, column_index2, join_mode)
+    else:
+        pass
+else:
+    pass

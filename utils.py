@@ -1,61 +1,30 @@
-import re
 from sys import stderr
 import csv
-import tempfile
 
 
 def eprint(*args, **kwargs):
     print(*args, file=stderr, **kwargs)
 
 
-# def record_line_to_list(record):
-#     pattern = r"(\"([\x20\x21\x23-\x2b\x2d-\x7e\x2c\x0d\x0a]|(\"\"))*\")|([\x20\x21\x23-\x2b\x2d-\x7e])*"
-#     record_list = re.findall(pattern, record)
-#     record_list = [record_list[i][0]
-#                    for i in range(len(record_list)) if i % 2 == 0]
-#     print(record_list)
+def sort_file_by_column(fin, fout, column_name):
+    with open(fin, 'r') as fin:
+        csvreader = csv.reader(fin)
+        header = next(csvreader)
+        column_index = header.index(column_name)
 
+        sorted = sfbc(csvreader, column_index)
+        merge_semisorted_tmp_files(fout, column_index)
 
-# def check_if_column_exist(fname, column):
-#     pattern = r"(\"([\x20\x21\x23-\x2b\x2d-\x7e\x2c\x0d\x0a]|(\"\"))*\")|([\x20\x21\x23-\x2b\x2d-\x7e])*"
-
-#     with open(fname, 'r') as file:
-#         headers1 = re.findall(pattern, file.readline())
-#         headers1 = [headers1[i][0]
-#                     for i in range(len(headers1)) if headers1[i][0] != '']
-#         headers = []
-#         for header in headers1:
-#             if header[0] == '"' and header[-1] == '"':
-#                 headers.append(header[1:len(header)-1])
-#             else:
-#                 headers.append(header)
-#         if column not in headers:
-#             eprint("Error: column", column, "does not exist in file", fname)
-#             return False
-#     return True
-
-
-def sort_file_by_column(fname, column_name):
-    fin = open(fname, 'r')
-
-    csvreader = csv.reader(fin)
-    header = next(csvreader)
-    column_index = header.index(column_name)
-
-    sorted = sfbc(csvreader, column_index)
-    merge_semisorted_files("out", column_index)
-
-    i = 0
     while not sorted:
-        print(i)
-        with open("out", 'r') as file:
+        with open(fout, 'r') as file:
             csvr = csv.reader(file)
             sorted = sfbc(csvr, column_index)
-        merge_semisorted_files("out", column_index)
+        merge_semisorted_tmp_files(fout, column_index)
+
+    return column_index
+
 
 # sort file by column without header
-
-
 def sfbc(csvr: csv.reader, index: int):
     f1 = open("tmp1", 'w')
     f2 = open("tmp2", 'w')
@@ -74,14 +43,17 @@ def sfbc(csvr: csv.reader, index: int):
     return sorted
 
 
-def list_to_csvstr(row):
+def list_to_csvstr(row, newline=True):
     nrow = []
     for i in range(len(row)):
         nrow.append('"'+row[i]+'"')
-    return ','.join(nrow)+'\n'
+    if newline:
+        return ','.join(nrow)+'\r\n'
+    else:
+        return ','.join(nrow)
 
 
-def merge_semisorted_files(fname, index):
+def merge_semisorted_tmp_files(fname, index):
     f1 = open("tmp1", 'r')
     f2 = open("tmp2", 'r')
     fout = open(fname, 'w')
@@ -108,7 +80,6 @@ def merge_semisorted_files(fname, index):
         return
 
     while True:
-        print(row1[index], row2[index])
         if row1[index] < row2[index]:
             fout.write(list_to_csvstr(row1))
             try:
@@ -131,3 +102,95 @@ def merge_semisorted_files(fname, index):
                 f1.close()
                 f2.close()
                 return
+
+
+def line_equals(string1, string2, index1, index2):
+    r1 = next(csv.reader(string1))
+    r2 = next(csv.reader(string2))
+    try:
+        return r1[index1] == r2[index2]
+    except:
+        return False
+
+
+def line_cmp(string1, string2, index1, index2):
+    r1 = next(csv.reader([string1]))
+    r2 = next(csv.reader([string2]))
+    try:
+        a = r1[index1]
+        b = r2[index2]
+    except:
+        eprint('error in line_cmp')
+        exit(1)
+    if a < b:
+        return -1
+    elif a == b:
+        return 0
+    else:
+        return 1
+
+
+def merge(fname1, fname2, fin1, fin2, fout, column_index1, column_index2, join_mode):
+    with open(fname1) as f:
+        r = csv.reader(f)
+        header1 = next(r)
+    with open(fname2) as f:
+        r = csv.reader(f)
+        header2 = next(r)
+    fout = open(fout, 'w')
+    f1 = open(fin1, 'r')
+    f2 = open(fin2, 'r')
+
+    if join_mode == 'right':
+        join_mode = 'left'
+        f1, f2 = f2, f1
+        header1, header2 = header2, header1
+
+    # only cases: left, inner
+
+    fout.write(list_to_csvstr(header1, newline=False)+",")
+    fout.write(list_to_csvstr(header2))
+    h2len = len(header2)
+
+    prevpos2 = 0
+    prevstate = "not_found"
+    line1 = f1.readline()
+    line2 = f2.readline()
+    while True:
+        cmp = line_cmp(line1, line2, column_index1, column_index2)
+        if cmp < 0:
+            # print(1, line1, end='')
+            if join_mode == 'left':
+                fout.write(line1[:-1])
+                fout.write(','*h2len+'\n')
+            line1 = f1.readline()
+            if line1 == '':
+                break
+        elif cmp > 0:
+            # print(2, line2, end='')
+            # fout.write(line2)
+            line2 = f2.readline()
+            if line2 == '':
+                if join_mode == 'left':
+                    # print(line1)
+                    fout.write(line1)
+                    for line in f1:
+                        fout.write(line)
+                        # print(line)
+                break
+        else:
+            fout.write(line1[:-1])
+            fout.write(",")
+            fout.write(line2)
+            line2 = f2.readline()
+            if line2 == '':
+                if join_mode == 'left':
+                    print(line1)
+                    fout.write(line1)
+                    for line in f1:
+                        fout.write(line)
+                break
+
+    fout.close()
+    f1.close()
+    f2.close()
