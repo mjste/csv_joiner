@@ -53,6 +53,7 @@ def list_to_csvstr(row, newline=True):
         return ','.join(nrow)
 
 
+# merges two headerless tmp file into one output file
 def merge_semisorted_tmp_files(fname, index):
     f1 = open("tmp1", 'r')
     f2 = open("tmp2", 'r')
@@ -103,6 +104,8 @@ def merge_semisorted_tmp_files(fname, index):
                 f2.close()
                 return
 
+# checks line equality with given fiels
+
 
 def line_equals(string1, string2, index1, index2):
     r1 = next(csv.reader(string1))
@@ -111,6 +114,8 @@ def line_equals(string1, string2, index1, index2):
         return r1[index1] == r2[index2]
     except:
         return False
+
+# compares lines with respect to given field
 
 
 def line_cmp(string1, string2, index1, index2):
@@ -129,6 +134,9 @@ def line_cmp(string1, string2, index1, index2):
     else:
         return 1
 
+# does final merging (actually this time join)
+# on two sorted files
+
 
 def merge(fname1, fname2, fin1, fin2, fout, column_index1, column_index2, join_mode):
     with open(fname1) as f:
@@ -141,24 +149,41 @@ def merge(fname1, fname2, fin1, fin2, fout, column_index1, column_index2, join_m
     f1 = open(fin1, 'r')
     f2 = open(fin2, 'r')
 
+    # only handled cases: left, inner
+    # because right is reverse left
     if join_mode == 'right':
         join_mode = 'left'
         f1, f2 = f2, f1
         header1, header2 = header2, header1
+        column_index1, column_index2 = column_index2, column_index1
 
-    # only cases: left, inner
-
+    # print header
     fout.write(list_to_csvstr(header1, newline=False)+",")
     fout.write(list_to_csvstr(header2))
     h2len = len(header2)
 
     prevpos2 = 0
     prevstate = "not_found"
+    prevline1 = ''
+    # TODO try except
     line1 = f1.readline()
     line2 = f2.readline()
     while True:
         cmp = line_cmp(line1, line2, column_index1, column_index2)
         if cmp < 0:
+            # fout.write('-1\n')
+            if prevstate == 'found':
+                line1 = f1.readline()
+                f2.seek(prevpos2)
+                line2 = f2.readline()
+                if prevline1 != line1:
+                    prevstate = 'not_found'
+
+                continue
+            prevstate = 'not_found'
+            # fout.write("ppos: "+str(prevpos2)+'->')
+            # fout.write(str(prevpos2)+'\n')
+
             # print(1, line1, end='')
             if join_mode == 'left':
                 fout.write(line1[:-1])
@@ -167,8 +192,7 @@ def merge(fname1, fname2, fin1, fin2, fout, column_index1, column_index2, join_m
             if line1 == '':
                 break
         elif cmp > 0:
-            # print(2, line2, end='')
-            # fout.write(line2)
+            prevpos2 = f2.tell()
             line2 = f2.readline()
             if line2 == '':
                 if join_mode == 'left':
@@ -179,14 +203,17 @@ def merge(fname1, fname2, fin1, fin2, fout, column_index1, column_index2, join_m
                         # print(line)
                 break
         else:
+            # fout.write('0\n')
+            prevline1 = line1
+            prevstate = 'found'
             fout.write(line1[:-1])
             fout.write(",")
             fout.write(line2)
             line2 = f2.readline()
             if line2 == '':
                 if join_mode == 'left':
-                    print(line1)
-                    fout.write(line1)
+                    # print(line1)
+                    # fout.write(line1)
                     for line in f1:
                         fout.write(line)
                 break

@@ -61,6 +61,6 @@ if col1_exists:
         merge(fname1, fname2, fout1, fout2,
               "out", column_index1, column_index2, join_mode)
     else:
-        pass
+        eprint("TODO -> just show first, second or no file depending on mode")
 else:
-    pass
+    eprint("TODO -> just show first, second or no file depending on mode")
